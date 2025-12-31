@@ -118,6 +118,27 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
     return true;
   }
 
+  // Helper method to extract structured output from tool calls
+  // This handles cases where parsed is null but tool_calls contains the data
+  private extractFromToolCalls(raw: unknown): this['ModelOutput'] | undefined {
+    try {
+      // Check if raw has tool_calls array
+      if (raw && typeof raw === 'object' && 'tool_calls' in raw) {
+        const toolCalls = (raw as { tool_calls?: Array<{ args?: unknown }> }).tool_calls;
+        if (Array.isArray(toolCalls) && toolCalls.length > 0) {
+          const firstToolCall = toolCalls[0];
+          if (firstToolCall && 'args' in firstToolCall && firstToolCall.args) {
+            logger.debug(`[${this.modelName}] Extracting structured output from tool_calls`);
+            return this.validateModelOutput(firstToolCall.args);
+          }
+        }
+      }
+    } catch (error) {
+      logger.warning(`[${this.modelName}] Failed to extract from tool_calls:`, error);
+    }
+    return undefined;
+  }
+
   async invoke(inputMessages: BaseMessage[]): Promise<this['ModelOutput']> {
     // Use structured output
     if (this.withStructuredOutput) {
@@ -150,6 +171,17 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
           logger.debug(`[${this.modelName}] Successfully parsed structured output`);
           return response.parsed;
         }
+
+        // Try to extract from tool_calls if parsed is null
+        // This handles Claude Opus and other models that return tool_calls but fail parsing
+        if (response.raw) {
+          const extractedFromToolCalls = this.extractFromToolCalls(response.raw);
+          if (extractedFromToolCalls) {
+            logger.debug(`[${this.modelName}] Successfully extracted structured output from tool_calls`);
+            return extractedFromToolCalls;
+          }
+        }
+
         logger.error('Failed to parse response', response);
         throw new Error('Could not parse response with structured output');
       } catch (error) {
@@ -169,6 +201,16 @@ export abstract class BaseAgent<T extends z.ZodType, M = unknown> {
             return parsed;
           }
         }
+
+        // Try to extract from tool_calls as a last resort
+        if (response?.raw) {
+          const extractedFromToolCalls = this.extractFromToolCalls(response.raw);
+          if (extractedFromToolCalls) {
+            logger.debug(`[${this.modelName}] Recovered structured output from tool_calls after error`);
+            return extractedFromToolCalls;
+          }
+        }
+
         logger.error(`[${this.modelName}] LLM call failed with error: \n${errorMessage}`);
         throw new Error(`Failed to invoke ${this.modelName} with structured output: \n${errorMessage}`);
       }
