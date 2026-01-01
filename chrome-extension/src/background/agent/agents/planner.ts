@@ -18,29 +18,25 @@ import {
 import { filterExternalContent } from '../messages/utils';
 const logger = createLogger('PlannerAgent');
 
-// Define Zod schema for planner output
+// Helper function to convert boolean-like values
+const booleanOrStringSchema = z.union([
+  z.boolean(),
+  z.string().transform(val => {
+    if (val.toLowerCase() === 'true' || val === '1' || val.toLowerCase() === 'yes') return true;
+    if (val.toLowerCase() === 'false' || val === '0' || val.toLowerCase() === 'no') return false;
+    return false; // Default to false for unknown strings
+  }),
+]);
+
+// Define Zod schema for planner output with defaults to handle missing fields
 export const plannerOutputSchema = z.object({
-  observation: z.string(),
-  challenges: z.string(),
-  done: z.union([
-    z.boolean(),
-    z.string().transform(val => {
-      if (val.toLowerCase() === 'true') return true;
-      if (val.toLowerCase() === 'false') return false;
-      throw new Error('Invalid boolean string');
-    }),
-  ]),
-  next_steps: z.string(),
-  final_answer: z.string(),
-  reasoning: z.string(),
-  web_task: z.union([
-    z.boolean(),
-    z.string().transform(val => {
-      if (val.toLowerCase() === 'true') return true;
-      if (val.toLowerCase() === 'false') return false;
-      throw new Error('Invalid boolean string');
-    }),
-  ]),
+  observation: z.string().default(''),
+  challenges: z.string().default(''),
+  done: booleanOrStringSchema.default(false),
+  next_steps: z.string().default(''),
+  final_answer: z.string().default(''),
+  reasoning: z.string().default(''),
+  web_task: booleanOrStringSchema.default(true),
 });
 
 export type PlannerOutput = z.infer<typeof plannerOutputSchema>;
@@ -83,11 +79,11 @@ export class PlannerAgent extends BaseAgent<typeof plannerOutputSchema, PlannerO
       }
 
       // clean the model output
-      const observation = filterExternalContent(modelOutput.observation);
-      const final_answer = filterExternalContent(modelOutput.final_answer);
-      const next_steps = filterExternalContent(modelOutput.next_steps);
-      const challenges = filterExternalContent(modelOutput.challenges);
-      const reasoning = filterExternalContent(modelOutput.reasoning);
+      const observation = filterExternalContent(modelOutput.observation || '');
+      const final_answer = filterExternalContent(modelOutput.final_answer || '');
+      const next_steps = filterExternalContent(modelOutput.next_steps || '');
+      const challenges = filterExternalContent(modelOutput.challenges || '');
+      const reasoning = filterExternalContent(modelOutput.reasoning || '');
 
       const cleanedPlan: PlannerOutput = {
         ...modelOutput,

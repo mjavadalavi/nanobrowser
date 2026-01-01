@@ -24,6 +24,10 @@ import { isUrlAllowed } from './util';
 
 const logger = createLogger('Page');
 
+// Scroll overlap ratio - ensures 20% of viewport is shown from previous scroll position
+// This prevents missing elements between scroll positions
+const SCROLL_OVERLAP_RATIO = 0.2;
+
 export function build_initial_state(tabId?: number, url?: string, title?: string): PageState {
   return {
     elementTree: new DOMElementNode({
@@ -672,10 +676,15 @@ export default class Page {
     }
 
     if (!elementNode) {
-      // Scroll the whole page up by viewport height
-      await this._puppeteerPage.evaluate('window.scrollBy(0, -(window.visualViewport?.height || window.innerHeight));');
+      // Scroll the whole page up by viewport height minus overlap
+      // Using (1 - SCROLL_OVERLAP_RATIO) to ensure 20% overlap with previous content
+      await this._puppeteerPage.evaluate(overlapRatio => {
+        const viewportHeight = window.visualViewport?.height || window.innerHeight;
+        const scrollAmount = viewportHeight * (1 - overlapRatio);
+        window.scrollBy(0, -scrollAmount);
+      }, SCROLL_OVERLAP_RATIO);
     } else {
-      // Scroll the specific element up by its client height
+      // Scroll the specific element up by its client height minus overlap
       const element = await this.locateElement(elementNode);
       if (!element) {
         throw new Error(`Element: ${elementNode} not found`);
@@ -687,9 +696,10 @@ export default class Page {
         throw new Error(`No scrollable ancestor found for element: ${elementNode}`);
       }
 
-      await scrollableElement.evaluate(el => {
-        el.scrollBy(0, -el.clientHeight);
-      });
+      await scrollableElement.evaluate((el, overlapRatio) => {
+        const scrollAmount = el.clientHeight * (1 - overlapRatio);
+        el.scrollBy(0, -scrollAmount);
+      }, SCROLL_OVERLAP_RATIO);
     }
   }
 
@@ -699,10 +709,15 @@ export default class Page {
     }
 
     if (!elementNode) {
-      // Scroll the whole page down by viewport height
-      await this._puppeteerPage.evaluate('window.scrollBy(0, (window.visualViewport?.height || window.innerHeight));');
+      // Scroll the whole page down by viewport height minus overlap
+      // Using (1 - SCROLL_OVERLAP_RATIO) to ensure 20% overlap with previous content
+      await this._puppeteerPage.evaluate(overlapRatio => {
+        const viewportHeight = window.visualViewport?.height || window.innerHeight;
+        const scrollAmount = viewportHeight * (1 - overlapRatio);
+        window.scrollBy(0, scrollAmount);
+      }, SCROLL_OVERLAP_RATIO);
     } else {
-      // Scroll the specific element down by its client height
+      // Scroll the specific element down by its client height minus overlap
       const element = await this.locateElement(elementNode);
       if (!element) {
         throw new Error(`Element: ${elementNode} not found`);
@@ -714,9 +729,10 @@ export default class Page {
         throw new Error(`No scrollable ancestor found for element: ${elementNode}`);
       }
 
-      await scrollableElement.evaluate(el => {
-        el.scrollBy(0, el.clientHeight);
-      });
+      await scrollableElement.evaluate((el, overlapRatio) => {
+        const scrollAmount = el.clientHeight * (1 - overlapRatio);
+        el.scrollBy(0, scrollAmount);
+      }, SCROLL_OVERLAP_RATIO);
     }
   }
 

@@ -10,6 +10,24 @@ function isNotNull<T>(item: T | null | undefined): item is T {
   return item != null;
 }
 
+/**
+ * Check if an error is related to a tab being closed or not found.
+ * This is a common occurrence when a tab is closed during an operation.
+ */
+function isTabClosedError(error: unknown): boolean {
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    return (
+      message.includes('no tab with id') ||
+      message.includes('tab was closed') ||
+      message.includes('cannot access') ||
+      message.includes('frame was removed') ||
+      message.includes('target closed')
+    );
+  }
+  return false;
+}
+
 export interface ReadabilityResult {
   title: string;
   content: string;
@@ -526,7 +544,10 @@ export async function removeHighlights(tabId: number): Promise<void> {
       },
     });
   } catch (error) {
-    logger.error('Failed to remove highlights:', error);
+    // Only log if it's not a tab-closed error (which is expected during normal operation)
+    if (!isTabClosedError(error)) {
+      logger.error('Failed to remove highlights:', error);
+    }
   }
 }
 
@@ -578,8 +599,28 @@ export async function getScrollInfo(tabId: number): Promise<[number, number, num
   return [result.scrollY, result.visualViewportHeight, result.scrollHeight];
 }
 
+/**
+ * Check if the tab exists and is accessible.
+ * @param tabId - The ID of the tab to check.
+ * @returns True if the tab exists and is accessible, false otherwise.
+ */
+async function isTabAccessible(tabId: number): Promise<boolean> {
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    return tab !== undefined && tab.id !== undefined;
+  } catch {
+    return false;
+  }
+}
+
 // Function to check if script is already injected
 async function scriptInjectedFrames(tabId: number): Promise<Map<number, boolean>> {
+  // First check if the tab is still accessible
+  if (!(await isTabAccessible(tabId))) {
+    // Tab doesn't exist or is not accessible - this is expected when a tab is closed
+    return new Map();
+  }
+
   try {
     const results = await chrome.scripting.executeScript({
       target: { tabId, allFrames: true },
@@ -587,7 +628,10 @@ async function scriptInjectedFrames(tabId: number): Promise<Map<number, boolean>
     });
     return new Map(results.map(result => [result.frameId, result.result || false]));
   } catch (err) {
-    console.error('Failed to check script injection status:', err);
+    // Only log unexpected errors, not tab-closed errors which are normal during operation
+    if (!isTabClosedError(err)) {
+      logger.error('Failed to check script injection status:', err);
+    }
     return new Map();
   }
 }
@@ -629,6 +673,9 @@ export async function injectBuildDomTreeScripts(tabId: number) {
       });
     }
   } catch (err) {
-    console.error('Failed to inject scripts:', err);
+    // Only log unexpected errors
+    if (!isTabClosedError(err)) {
+      logger.error('Failed to inject scripts:', err);
+    }
   }
 }

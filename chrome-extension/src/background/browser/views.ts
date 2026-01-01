@@ -43,7 +43,7 @@ export interface BrowserContextConfig {
    * which are included in the state what the LLM will see.
    * If set to -1, all elements will be included (this leads to high token usage).
    * If set to 0, only the elements which are visible in the viewport will be included.
-   * @default 0
+   * @default 500
    */
   viewportExpansion: number;
 
@@ -84,7 +84,7 @@ export const DEFAULT_BROWSER_CONTEXT_CONFIG: BrowserContextConfig = {
   maximumWaitPageLoadTime: 5.0,
   waitBetweenActions: 0.5,
   browserWindowSize: { width: 1280, height: 1100 },
-  viewportExpansion: 0,
+  viewportExpansion: 500, // Changed from 0 to 500 pixels to include elements above/below viewport
   allowedUrls: [],
   deniedUrls: [],
   includeDynamicAttributes: true,
