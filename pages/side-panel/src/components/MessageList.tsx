@@ -1,6 +1,7 @@
 import type { Message } from '@extension/storage';
 import { ACTOR_PROFILES } from '../types/message';
 import { memo } from 'react';
+import ReactMarkdown from 'react-markdown';
 
 interface MessageListProps {
   messages: Message[];
@@ -60,13 +61,16 @@ function MessageBlock({ message, isSameActor, isDarkMode = false }: MessageBlock
         )}
 
         <div className="space-y-0.5">
-          <div className={`whitespace-pre-wrap break-words text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+          <div className={`break-words text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
             {isProgress ? (
               <div className={`h-1 overflow-hidden rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
                 <div className="h-full animate-progress bg-blue-500" />
               </div>
             ) : (
-              message.content
+              <div
+                className={`prose prose-sm max-w-none ${isDarkMode ? 'prose-invert' : ''} prose-headings:my-2 prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-hr:my-2`}>
+                <ReactMarkdown>{message.content}</ReactMarkdown>
+              </div>
             )}
           </div>
           {!isProgress && (

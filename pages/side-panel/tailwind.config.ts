@@ -1,5 +1,6 @@
 import baseConfig from '@extension/tailwindcss-config';
 import type { Config } from 'tailwindcss/types/config';
+import typography from '@tailwindcss/typography';
 
 export default {
   ...baseConfig,
@@ -17,4 +18,5 @@ export default {
       },
     },
   },
+  plugins: [...(baseConfig.plugins || []), typography],
 } as Config;
