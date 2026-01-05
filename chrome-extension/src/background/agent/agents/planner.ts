@@ -18,7 +18,7 @@ import {
 import { filterExternalContent } from '../messages/utils';
 const logger = createLogger('PlannerAgent');
 
-// Helper function to convert boolean-like values
+// Helper function to convert boolean-like values from various formats
 const booleanOrStringSchema = z.union([
   z.boolean(),
   z.string().transform(val => {
@@ -26,6 +26,29 @@ const booleanOrStringSchema = z.union([
     if (val.toLowerCase() === 'false' || val === '0' || val.toLowerCase() === 'no') return false;
     return false; // Default to false for unknown strings
   }),
+  // Handle object types that might be returned by LLM
+  z
+    .object({})
+    .passthrough()
+    .transform(obj => {
+      // Try to extract boolean value from common object patterns
+      if ('value' in obj) {
+        const val = obj.value;
+        if (typeof val === 'boolean') return val;
+        if (typeof val === 'string') {
+          if (val.toLowerCase() === 'true' || val === '1' || val.toLowerCase() === 'yes') return true;
+          return false;
+        }
+      }
+      // Check for any boolean property
+      for (const key of Object.keys(obj)) {
+        if (typeof obj[key] === 'boolean') return obj[key];
+      }
+      return false; // Default to false for unknown objects
+    }),
+  // Handle null/undefined
+  z.null().transform(() => false),
+  z.undefined().transform(() => false),
 ]);
 
 // Define Zod schema for planner output with defaults to handle missing fields
