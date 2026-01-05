@@ -2,6 +2,7 @@ import type { Message } from '@extension/storage';
 import { ACTOR_PROFILES } from '../types/message';
 import { memo } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface MessageListProps {
   messages: Message[];
@@ -68,8 +69,9 @@ function MessageBlock({ message, isSameActor, isDarkMode = false }: MessageBlock
               </div>
             ) : (
               <div
-                className={`prose prose-sm max-w-none ${isDarkMode ? 'prose-invert' : ''} prose-headings:my-2 prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-hr:my-2`}>
-                <ReactMarkdown>{message.content}</ReactMarkdown>
+                dir="auto"
+                className={`prose prose-sm max-w-none ${isDarkMode ? 'prose-invert' : ''} prose-headings:my-2 prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-hr:my-2 prose-table:my-2 prose-th:px-2 prose-th:py-1 prose-td:px-2 prose-td:py-1 prose-table:border-collapse prose-th:border prose-td:border ${isDarkMode ? 'prose-th:border-gray-600 prose-td:border-gray-600' : 'prose-th:border-gray-300 prose-td:border-gray-300'}`}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
               </div>
             )}
           </div>

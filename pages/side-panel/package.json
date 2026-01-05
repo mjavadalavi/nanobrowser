@@ -24,6 +24,7 @@
     "@extension/storage": "workspace:*",
     "react-icons": "^5.0.0",
     "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "webextension-polyfill": "^0.12.0"
   },
   "devDependencies": {
